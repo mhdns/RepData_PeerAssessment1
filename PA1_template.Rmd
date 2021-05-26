@@ -7,19 +7,85 @@ output:
 
 
 ## Loading and preprocessing the data
-
+```{r}
+unzip("activity.zip")
+rawData <- read.csv("activity.csv")
+dataSample <- head(rawData)
+print(str(rawData))
+print(dataSample, type="html")
+```
 
 
 ## What is mean total number of steps taken per day?
 
+```{r}
+library(dplyr)
+dailySteps <- rawData %>% group_by(date) %>% 
+    summarise(total_steps = sum(steps, na.rm=TRUE))
+hist(dailySteps$total_steps, main="Number of Steps per Day", xlab = "Step Count",
+     ylab="Number of Days")
+```
 
+```{r}
+meanStepsPerDay <- mean(dailySteps$total_steps)
+medianStepsPerDay <- median(dailySteps$total_steps)
+```
+
+The mean total number of steps per data is `r meanStepsPerDay`.  
+The median total number of steps per day is `r medianStepsPerDay`.  
 
 ## What is the average daily activity pattern?
 
+```{r}
+intervalSteps <- rawData %>% group_by(interval) %>% 
+    summarise(average_steps = mean(steps, na.rm=TRUE))
+maxStepsInterval <- intervalSteps$interval[which.max(intervalSteps$average_steps)]
+maxSteps <- round(max(intervalSteps$average_steps),0)
+with(intervalSteps, plot(interval, average_steps, type="l",
+                         main="Daily Activity Pattern", 
+                         xlab="Time Interval (mins)",
+                         ylab="Average Steps"))
+```
 
+The `r maxStepsInterval`th interval contains the most steps, `r maxSteps`.  
 
 ## Imputing missing values
 
+```{r}
+missingDataCount <- sapply(rawData, function(x) sum(is.na(x)))
+print(missingDataCount, type="html")
+```
 
+_Replace missing data with mean steps for the interval averaged accross the days_
+```{r}
+imputedData <- rawData
+for (i in 1:dim(imputedData)[1]) {
+    if (is.na(imputedData[i,"steps"])) {
+        imputedData[i,"steps"] <- intervalSteps[intervalSteps$interval == imputedData[i, "interval"],
+                                                "average_steps"]
+    }
+}
+```
+
+```{r}
+imputedDailySteps <- imputedData %>% group_by(date) %>% 
+    summarise(total_steps = sum(steps, na.rm=TRUE))
+hist(imputedDailySteps$total_steps, main="Number of Steps per Day", xlab = "Step Count",
+     ylab="Number of Days")
+```
+
+```{r}
+imputedMeanStepsPerDay <- mean(imputedDailySteps$total_steps)
+rawMeanDiff <- round(imputedMeanStepsPerDay - meanStepsPerDay,0)
+imputedMedianStepsPerDay <- median(imputedDailySteps$total_steps)
+rawMedianDiff <- round(imputedMedianStepsPerDay - medianStepsPerDay,0)
+```
+
+The mean total number of steps per data is `r imputedMeanStepsPerDay`.
+Difference from raw mean = `r rawMeanDiff`
+The median total number of steps per day is `r imputedMedianStepsPerDay`. 
+Difference from raw median = `r rawMedianDiff`
+
+Due to imputing, the totals will increase as initially the na will be ignored.
 
 ## Are there differences in activity patterns between weekdays and weekends?
